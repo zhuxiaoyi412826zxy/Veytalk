@@ -48,6 +48,9 @@ class LiveViewModel @Inject constructor(
 
     private val api get() = apiClient.service(LiveApi::class.java)
 
+    /** 带鉴权拦截器的 OkHttpClient：给 ExoPlayer 数据源用（视频文件是受控接口，无 satoken 头会 403） */
+    fun authedHttpClient(): okhttp3.OkHttpClient = apiClient.mediaHttpClient
+
     private val _list = MutableStateFlow<List<LiveRoomVO>>(emptyList())
     val list: StateFlow<List<LiveRoomVO>> = _list
 
@@ -110,10 +113,6 @@ class LiveViewModel @Inject constructor(
     private val _videoTotal = MutableStateFlow(0)
     val videoTotal: StateFlow<Int> = _videoTotal
 
-    /** 当前内联播放的视频（对齐 playingVideo） */
-    private val _playing = MutableStateFlow<VideoVO?>(null)
-    val playing: StateFlow<VideoVO?> = _playing
-
     private var videoLoaded = false
 
     /** 首次切到视频板块才拉列表，避免进大厅就多打一次请求 */
@@ -143,18 +142,13 @@ class LiveViewModel @Inject constructor(
         }
     }
 
-    /** 点开卡片内联播放并上报播放量（静默失败不打扰观看） */
-    fun play(video: VideoVO) {
-        _playing.value = video
+    /** 点开卡片进全屏播放页时上报播放量（静默失败不打扰观看） */
+    fun reportPlay(video: VideoVO) {
         val id = video.id ?: return
         _videos.value = _videos.value.map {
             if (it.id == id) it.copy(playCount = (it.playCount ?: 0) + 1) else it
         }
         viewModelScope.launch { runCatching { api.reportVideoPlay(id) } }
-    }
-
-    fun closePlayer() {
-        _playing.value = null
     }
 
     /** 删除自己的视频（mine=true 才有入口），记录不存在后端幂等成功 */
@@ -166,7 +160,6 @@ class LiveViewModel @Inject constructor(
                 if (envelope.code != 200) throw ApiError(envelope.code, envelope.message ?: "删除失败")
                 _videos.value = _videos.value.filter { it.id != id }
                 _videoTotal.value = (_videoTotal.value - 1).coerceAtLeast(0)
-                if (_playing.value?.id == id) _playing.value = null
                 _toast.value = "已删除"
             } catch (e: Exception) {
                 _toast.value = if (e is ApiError) e.message else "删除失败"
@@ -187,6 +180,37 @@ class LiveViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val context = appContext
+                // 元数据 + 自动封面抽帧：不选封面时用第 1 秒帧（OPT CLOSEST_SYNC 取关键帧，速度快不花屏）
+                var dur = duration
+                var w = width
+                var h = height
+                var autoCoverBytes: ByteArray? = null
+                val retriever = android.media.MediaMetadataRetriever()
+                runCatching {
+                    retriever.setDataSource(context, videoUri)
+                    if (dur == null) {
+                        dur = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_DURATION)
+                            ?.toLongOrNull()?.let { (it / 1000).toInt() }
+                    }
+                    var vw = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull()
+                    var vh = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull()
+                    // 竖拍视频元数据宽高未含旋转，90/270 度要交换，否则播放页横竖判断会反
+                    val rot = retriever.extractMetadata(android.media.MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
+                    if (rot == 90 || rot == 270) { val t = vw; vw = vh; vh = t }
+                    if (w == null) w = vw
+                    if (h == null) h = vh
+                    if (coverUri == null) {
+                        val frame = retriever.getFrameAtTime(1_000_000, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                            ?: retriever.getFrameAtTime(0)
+                        if (frame != null) {
+                            val baos = java.io.ByteArrayOutputStream()
+                            frame.compress(android.graphics.Bitmap.CompressFormat.JPEG, 85, baos)
+                            autoCoverBytes = baos.toByteArray()
+                        }
+                    }
+                }
+                runCatching { retriever.release() }
+
                 // 视频本体
                 val vBytes = context.contentResolver.openInputStream(videoUri)?.use { it.readBytes() }
                     ?: throw ApiError(-1, "无法读取所选视频")
@@ -200,7 +224,7 @@ class LiveViewModel @Inject constructor(
                     apiClient.service(com.im.nativeapp.core.network.FileApi::class.java)
                         .upload(vPart, "video", duration).unwrap(apiClient.json)
 
-                // 可选封面
+                // 封面：手动选的优先；没选用自动抽帧（封面失败不阻断发布）
                 var coverFileId: String? = null
                 if (coverUri != null) {
                     runCatching {
@@ -216,15 +240,24 @@ class LiveViewModel @Inject constructor(
                                 .upload(cPart, "video_cover", null).unwrap<com.im.nativeapp.core.network.FileVO>(apiClient.json).fileId
                         }
                     }
+                } else if (autoCoverBytes != null) {
+                    runCatching {
+                        val cPart = okhttp3.MultipartBody.Part.createFormData(
+                            "file", "cover.jpg",
+                            autoCoverBytes!!.toRequestBody("image/jpeg".toMediaTypeOrNull())
+                        )
+                        coverFileId = apiClient.service(com.im.nativeapp.core.network.FileApi::class.java)
+                            .upload(cPart, "video_cover", null).unwrap<com.im.nativeapp.core.network.FileVO>(apiClient.json).fileId
+                    }
                 }
 
                 val body = VideoCreateRequest(
                     title = title.trim(),
                     fileId = fileVo.fileId ?: throw ApiError(-1, "上传未返回 fileId"),
                     coverFileId = coverFileId,
-                    duration = duration,
-                    width = width,
-                    height = height,
+                    duration = dur,
+                    width = w,
+                    height = h,
                     size = vBytes.size.toLong(),
                     ext = vName.substringAfterLast('.', ""),
                     contentType = vMime

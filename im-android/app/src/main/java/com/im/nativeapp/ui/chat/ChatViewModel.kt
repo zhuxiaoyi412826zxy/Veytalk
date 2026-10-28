@@ -16,6 +16,7 @@ import com.im.nativeapp.core.network.ApiError
 import com.im.nativeapp.core.network.FileApi
 import com.im.nativeapp.core.network.MessageVO
 import com.im.nativeapp.core.network.unwrap
+import com.im.nativeapp.data.AuthRepository
 import com.im.nativeapp.data.ConversationRepository
 import com.im.nativeapp.data.MessageRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -28,6 +29,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.decodeFromJsonElement
 import javax.inject.Inject
 
 @HiltViewModel
@@ -40,6 +42,7 @@ class ChatViewModel @Inject constructor(
     private val apiClient: ApiClient,
     private val callManager: CallManager,
     private val imageOcr: ImageOcr,
+    private val auth: AuthRepository,
     val recorder: VoiceRecorder,
     private val voicePlayer: VoicePlayer
 ) : ViewModel() {
@@ -128,10 +131,103 @@ class ChatViewModel @Inject constructor(
         viewModelScope.launch { runCatching { messages.loadHistory(conversationId, reset = false) } }
     }
 
+    // ------------------------------ 引用回复（对齐 ChatWindow replyTarget） ------------------------------
+
+    /** 正在回复的消息：不为空时输入框上方展示回复横幅，发送后清空 */
+    private val _replyTarget = MutableStateFlow<MessageVO?>(null)
+    val replyTarget: StateFlow<MessageVO?> = _replyTarget
+
+    fun setReply(msg: MessageVO) { _replyTarget.value = msg }
+    fun cancelReply() { _replyTarget.value = null }
+
+    /** 引用块摘要的唯一口径（对齐 ChatWindow.quoteSummaryText）：附件 content 是文件 ID，必须转占位文案 */
+    fun quoteSummaryText(msg: MessageVO?): String {
+        if (msg == null) return ""
+        if (msg.recalled == true) return "[引用内容已撤回]"
+        return when (msg.msgType) {
+            2 -> if (msg.extra?.flash == true) "[闪照]" else "[图片]"
+            3 -> "[文件]"
+            4 -> "[语音]"
+            6 -> "[通话]"
+            else -> msg.content ?: ""
+        }
+    }
+
+    /** 本地即时拼一份 QuotePreview（与服务端同形），回包来了服务端权威内容覆盖（对齐 buildQuotePreview） */
+    private fun buildQuotePreview(msg: MessageVO): kotlinx.serialization.json.JsonObject =
+        kotlinx.serialization.json.buildJsonObject {
+            msg.messageId?.let { put("messageId", kotlinx.serialization.json.JsonPrimitive(it)) }
+            msg.fromUserId?.let { put("fromUserId", kotlinx.serialization.json.JsonPrimitive(it)) }
+            msg.fromNickname?.let { put("fromNickname", kotlinx.serialization.json.JsonPrimitive(it)) }
+            put("msgType", kotlinx.serialization.json.JsonPrimitive(msg.msgType))
+            put("content", kotlinx.serialization.json.JsonPrimitive(quoteSummaryText(msg)))
+            put("recalled", kotlinx.serialization.json.JsonPrimitive(msg.recalled == true))
+        }
+
+    // ------------------------------ 群成员与 @ 提及（对齐 parseMentions） ------------------------------
+
+    /** 群成员列表：仅群聊加载，@ 选人与提及解析共用 */
+    private val _members = MutableStateFlow<List<com.im.nativeapp.core.network.GroupMemberVO>>(emptyList())
+    val members: StateFlow<List<com.im.nativeapp.core.network.GroupMemberVO>> = _members
+
+    private var membersLoaded = false
+
+    /** 本人用户 ID：@ 选人面板与提及解析都要排除自己（对齐 mentionMembers 的 sameId 过滤） */
+    val myUserId: String get() = auth.currentUser.value.id
+
+    /** 群聊才拉成员（type=2 时 targetId 是 groupId） */
+    fun loadMembersIfGroup() {
+        val conv = conversation.value ?: return
+        if (conv.type != 2 || membersLoaded) return
+        val gid = conv.targetId ?: return
+        membersLoaded = true
+        viewModelScope.launch {
+            runCatching {
+                val envelope = apiClient.service(com.im.nativeapp.core.network.GroupApi::class.java)
+                    .members(gid, current = 1, size = 200)
+                if (envelope.code == 200) {
+                    val obj = envelope.data as? kotlinx.serialization.json.JsonObject
+                    val records = obj?.get("records") as? kotlinx.serialization.json.JsonArray
+                    _members.value = records?.mapNotNull {
+                        runCatching {
+                            apiClient.json.decodeFromJsonElement<com.im.nativeapp.core.network.GroupMemberVO>(it)
+                        }.getOrNull()
+                    } ?: emptyList()
+                }
+            }
+        }
+    }
+
+    /** 解析草稿中的 @提及（对齐 parseMentions）：@所有人→atAll；匹配成员展示名→atUserIds；匹配不到保留原文 */
+    private fun parseMentions(text: String): Pair<Boolean, List<String>> {
+        var atAll = false
+        val atUserIds = mutableListOf<String>()
+        val myId = auth.currentUser.value.id
+        for (match in Regex("@(\\S+)").findAll(text)) {
+            val name = match.groupValues[1]
+            if (name == "所有人") { atAll = true; continue }
+            val found = _members.value.find { m ->
+                (m.nicknameInGroup ?: m.displayName ?: m.nickname ?: "") == name
+            }
+            if (found?.userId != null && found.userId != myId) atUserIds.add(found.userId)
+        }
+        return atAll to atUserIds
+    }
+
     fun sendText(text: String) {
         if (text.isBlank()) return
+        val reply = _replyTarget.value
+        _replyTarget.value = null
+        // 群聊解析 @；单聊没有提及语义
+        val (atAll, atUserIds) = if (conversation.value?.type == 2) parseMentions(text) else (false to emptyList())
         viewModelScope.launch {
-            messages.sendText(conversationId, text.trim())
+            messages.sendText(
+                conversationId, text.trim(),
+                quoteMsgId = reply?.messageId,
+                quote = reply?.let { buildQuotePreview(it) },
+                atAll = if (atAll) true else null,
+                atUserIds = atUserIds.ifEmpty { null }
+            )
                 .onFailure { e -> _toast.tryEmit(e.message ?: "发送失败") }
         }
     }

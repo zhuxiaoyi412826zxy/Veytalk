@@ -28,6 +28,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -82,7 +85,8 @@ class MessageRepository @Inject constructor(
         recalled = m.recalled == true || m.status == 4,
         sendTime = m.sendTime,
         self = m.self == true,
-        readCount = m.readCount
+        readCount = m.readCount,
+        quoteJson = m.quote?.toString()
     )
 
     private fun fromEntity(e: MessageEntity): MessageVO = MessageVO(
@@ -95,6 +99,7 @@ class MessageRepository @Inject constructor(
         msgType = e.msgType,
         content = e.content,
         extra = e.extraJson?.let { runCatching { json.decodeFromString(MessageExtra.serializer(), it) }.getOrNull() },
+        quote = e.quoteJson?.let { runCatching { json.parseToJsonElement(it).jsonObject }.getOrNull() },
         seq = if (e.seqSort == Long.MAX_VALUE) null else e.seqSort.toString(),
         status = e.status,
         recalled = e.recalled,
@@ -224,13 +229,19 @@ class MessageRepository @Inject constructor(
     /**
      * 发送一条消息（HTTP 通道）：先占位(status=0)再发，失败标 status=5 可重发；
      * 网络层失败（非业务拒绝）进 pending 队列，恢复后 flushPending 幂等重提交。
+     * quote/quoteMsgId/atAll/atUserIds 对齐 chat.js send：占位阶段就带上 quote，
+     * 气泡上的引用块只认 message.quote，不等回包。
      */
     suspend fun send(
         cid: String,
         msgType: Int,
         content: String,
         extra: MessageExtra? = null,
-        clientMsgId: String? = null
+        clientMsgId: String? = null,
+        quoteMsgId: String? = null,
+        quote: kotlinx.serialization.json.JsonObject? = null,
+        atAll: Boolean? = null,
+        atUserIds: List<String>? = null
     ): Result<MessageVO> {
         val id = clientMsgId ?: newClientMsgId()
         appendMessage(
@@ -241,6 +252,7 @@ class MessageRepository @Inject constructor(
                 msgType = msgType,
                 content = content,
                 extra = extra,
+                quote = quote,
                 seq = null,
                 status = 0,
                 recalled = false,
@@ -250,7 +262,10 @@ class MessageRepository @Inject constructor(
         )
         return try {
             val vo: MessageVO = apiClient.service(MessageApi::class.java)
-                .send(SendMessageRequest(clientMsgId = id, msgType = msgType, content = content, conversationId = cid, extra = extra))
+                .send(SendMessageRequest(
+                    clientMsgId = id, msgType = msgType, content = content, conversationId = cid,
+                    extra = extra, quoteMsgId = quoteMsgId, atAll = atAll, atUserIds = atUserIds
+                ))
                 .unwrap(json)
             appendMessage(cid, vo, fallbackSelf = true)
             Result.success(vo)
@@ -265,7 +280,10 @@ class MessageRepository @Inject constructor(
                             conversationId = cid,
                             msgType = msgType,
                             content = content,
-                            extraJson = extra?.let { json.encodeToString(MessageExtra.serializer(), it) }
+                            extraJson = extra?.let { json.encodeToString(MessageExtra.serializer(), it) },
+                            quoteMsgId = quoteMsgId,
+                            atAll = atAll == true,
+                            atUserIdsJson = atUserIds?.let { ids -> ids.joinToString(",", "[", "]") { "\"$it\"" } }
                         )
                     )
                 }
@@ -274,7 +292,14 @@ class MessageRepository @Inject constructor(
         }
     }
 
-    suspend fun sendText(cid: String, text: String): Result<MessageVO> = send(cid, 1, text)
+    suspend fun sendText(
+        cid: String,
+        text: String,
+        quoteMsgId: String? = null,
+        quote: kotlinx.serialization.json.JsonObject? = null,
+        atAll: Boolean? = null,
+        atUserIds: List<String>? = null
+    ): Result<MessageVO> = send(cid, 1, text, quoteMsgId = quoteMsgId, quote = quote, atAll = atAll, atUserIds = atUserIds)
 
     /** 附件消息：content 放文件 ID，服务端按文件记录回填元数据；width/height 服务端不回填要自己传 */
     suspend fun sendAttachment(cid: String, msgType: Int, file: FileVO, width: Int? = null, height: Int? = null, duration: Int? = null, ocrText: String? = null): Result<MessageVO> {
@@ -339,14 +364,19 @@ class MessageRepository @Inject constructor(
         flow.value.find { it.clientMsgId == clientMsgId }?.let { cache(cid, listOf(it)) }
     }
 
-    /** 重发失败消息：复用原 clientMsgId，后端幂等直接返回首次结果 */
+    /** 重发失败消息：复用原 clientMsgId，后端幂等直接返回首次结果；引用关系从占位 quote 还原 */
     suspend fun resend(cid: String, message: MessageVO): Result<MessageVO> {
         val id = message.clientMsgId ?: return Result.failure(ApiError(-1, "本地消息缺少 clientMsgId"))
         val flow = buckets[cid] ?: return Result.failure(ApiError(-1, "会话不存在"))
         flow.value = flow.value.map { m -> if (m.clientMsgId == id) m.copy(status = 0) else m }
+        val quoteMsgId = message.quote?.get("messageId")?.jsonPrimitive?.contentOrNull
         return try {
             val vo: MessageVO = apiClient.service(MessageApi::class.java)
-                .send(SendMessageRequest(clientMsgId = id, msgType = message.msgType, content = message.content ?: "", conversationId = cid, extra = message.extra))
+                .send(SendMessageRequest(
+                    clientMsgId = id, msgType = message.msgType, content = message.content ?: "",
+                    conversationId = cid, extra = message.extra, quoteMsgId = quoteMsgId,
+                    atAll = message.extra?.atAll, atUserIds = message.extra?.atUserIds
+                ))
                 .unwrap(json)
             appendMessage(cid, vo, fallbackSelf = true)
             runCatching { db.pendingDao().remove(id) }
@@ -370,8 +400,18 @@ class MessageRepository @Inject constructor(
         for (p in list) {
             try {
                 val extra = p.extraJson?.let { runCatching { json.decodeFromString(MessageExtra.serializer(), it) }.getOrNull() }
+                val atUserIds = p.atUserIdsJson?.let {
+                    runCatching {
+                        (json.parseToJsonElement(it) as? kotlinx.serialization.json.JsonArray)
+                            ?.map { e -> e.jsonPrimitive.content }
+                    }.getOrNull()
+                }
                 val vo: MessageVO = apiClient.service(MessageApi::class.java)
-                    .send(SendMessageRequest(clientMsgId = p.clientMsgId, msgType = p.msgType, content = p.content, conversationId = p.conversationId, extra = extra))
+                    .send(SendMessageRequest(
+                        clientMsgId = p.clientMsgId, msgType = p.msgType, content = p.content,
+                        conversationId = p.conversationId, extra = extra, quoteMsgId = p.quoteMsgId,
+                        atAll = if (p.atAll) true else null, atUserIds = atUserIds
+                    ))
                     .unwrap(json)
                 appendMessage(p.conversationId, vo, fallbackSelf = true)
                 db.pendingDao().remove(p.clientMsgId)

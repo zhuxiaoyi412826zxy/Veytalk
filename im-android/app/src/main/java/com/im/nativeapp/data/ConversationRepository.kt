@@ -95,8 +95,10 @@ class ConversationRepository @Inject constructor(
     /**
      * 新消息到达：后端推送排除发送者本人，所以这里递增未读总是对的。
      * suppressUnread = 正打开着该会话（不计未读，否则角标先 +1 再被清零闪一下）。
+     * mentioned = 消息 @ 了我（与后端 MessageExtra.hasMention 同口径）：本地即时亮「有人@我」，
+     * 服务端 DB 的 at_flag 是同一时刻置位的，下次拉列表口径一致。
      */
-    fun applyIncoming(dto: MessageVO, suppressUnread: Boolean) {
+    fun applyIncoming(dto: MessageVO, suppressUnread: Boolean, mentioned: Boolean = false) {
         val cid = dto.conversationId ?: return
         val target = find(cid)
         if (target == null) {
@@ -111,7 +113,8 @@ class ConversationRepository @Inject constructor(
                     lastMsgContent = summarize(dto),
                     lastMsgType = dto.msgType,
                     lastMsgTime = dto.sendTime,
-                    unreadCount = if (suppressUnread) it.unreadCount else it.unreadCount + 1
+                    unreadCount = if (suppressUnread) it.unreadCount else it.unreadCount + 1,
+                    atFlag = it.atFlag == true || mentioned
                 ) else it
             }
         )

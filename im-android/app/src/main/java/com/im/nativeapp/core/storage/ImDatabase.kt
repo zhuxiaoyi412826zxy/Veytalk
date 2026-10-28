@@ -46,7 +46,9 @@ data class MessageEntity(
     val recalled: Boolean = false,
     val sendTime: String? = null,
     val self: Boolean = false,
-    val readCount: Int? = null
+    val readCount: Int? = null,
+    /** 引用预览 JSON（QuotePreview 同形），本地缓存往返不丢引用块 */
+    val quoteJson: String? = null
 )
 
 @Entity(tableName = "conversation", primaryKeys = ["conversationId"])
@@ -79,6 +81,10 @@ data class PendingMessageEntity(
     val msgType: Int,
     val content: String,
     val extraJson: String? = null,
+    val quoteMsgId: String? = null,
+    val atAll: Boolean = false,
+    /** atUserIds 的 JSON 数组串 */
+    val atUserIdsJson: String? = null,
     val createTime: Long = System.currentTimeMillis()
 )
 
@@ -166,7 +172,7 @@ interface PendingDao {
 
 @Database(
     entities = [MessageEntity::class, ConversationEntity::class, PendingMessageEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class ImDatabase : RoomDatabase() {

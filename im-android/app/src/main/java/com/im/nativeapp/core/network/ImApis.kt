@@ -132,6 +132,22 @@ interface GroupApi {
 
     @POST("group/{id}/quit")
     suspend fun quit(@Path("id") id: String): ApiEnvelope
+
+    /** 修改群资料（群名/公告/头像），群主与管理员可操作 */
+    @PUT("group/{id}")
+    suspend fun update(@Path("id") id: String, @Body body: GroupUpdateRequest): ApiEnvelope
+
+    /** 邀请成员入群：已在群内的跳过，返回实际新增的 ID 列表 */
+    @POST("group/{id}/members")
+    suspend fun addMembers(@Path("id") id: String, @Body body: GroupAddMembersRequest): ApiEnvelope
+
+    /** 移除成员：群主可移除任何人，管理员只能移除普通成员 */
+    @DELETE("group/{id}/members/{userId}")
+    suspend fun removeMember(@Path("id") id: String, @Path("userId") userId: String): ApiEnvelope
+
+    /** 修改我的群昵称：空串清除，回退展示账号昵称 */
+    @PUT("group/{id}/my-nickname")
+    suspend fun updateMyNickname(@Path("id") id: String, @Body body: GroupMyNicknameRequest): ApiEnvelope
 }
 
 interface FileApi {

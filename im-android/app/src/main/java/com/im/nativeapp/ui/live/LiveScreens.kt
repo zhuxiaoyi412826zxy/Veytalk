@@ -59,7 +59,9 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import androidx.media3.common.MediaItem
+import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import com.im.nativeapp.core.network.LiveRoomVO
 import com.im.nativeapp.core.network.VideoVO
 import com.im.nativeapp.ui.components.Avatar
@@ -73,6 +75,7 @@ import com.im.nativeapp.ui.components.Avatar
 @Composable
 fun LiveTab(
     onOpenRoom: (String) -> Unit,
+    onOpenVideoPlayer: (VideoVO) -> Unit = {},
     vm: LiveViewModel = hiltViewModel()
 ) {
     val list by vm.list.collectAsStateWithLifecycle()
@@ -81,9 +84,10 @@ fun LiveTab(
     val videos by vm.videos.collectAsStateWithLifecycle()
     val videoLoading by vm.videoLoading.collectAsStateWithLifecycle()
     val videoTotal by vm.videoTotal.collectAsStateWithLifecycle()
-    val playing by vm.playing.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var tab by remember { mutableStateOf(0) }
+    var tab by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(0) }
+    // 视频列表滚动位置持久化：导航去播放页再返回时回到原小窗位置
+    val videoListState = androidx.compose.foundation.lazy.rememberLazyListState()
     var uploadDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { vm.refreshList() }
@@ -154,15 +158,7 @@ fun LiveTab(
                     Button(onClick = { uploadDialog = true }) { Text("上传视频") }
                 }
 
-                // 内联播放区（点下方卡片在此播放，对齐 live-video__player）
-                playing?.let { v ->
-                    VideoPlayerBar(
-                        video = v,
-                        mediaUrl = vm.mediaUrl(v.fileUrl),
-                        onClose = { vm.closePlayer() }
-                    )
-                }
-
+                // 点卡片跳全屏播放页（横版横屏/竖版竖屏沉浸播放）
                 if (videoLoading && videos.isEmpty()) {
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
@@ -173,6 +169,7 @@ fun LiveTab(
                     }
                 } else {
                     LazyColumn(
+                        state = videoListState,
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(12.dp)
@@ -181,8 +178,7 @@ fun LiveTab(
                             VideoCard(
                                 video = video,
                                 coverUrl = vm.mediaUrl(video.coverUrl),
-                                playing = playing?.id == video.id,
-                                onClick = { vm.play(video) },
+                                onClick = { vm.reportPlay(video); onOpenVideoPlayer(video) },
                                 onDelete = if (video.mine == true) ({ vm.deleteVideo(video) }) else null
                             )
                         }
@@ -206,7 +202,6 @@ fun LiveTab(
 private fun VideoCard(
     video: VideoVO,
     coverUrl: String,
-    playing: Boolean,
     onClick: () -> Unit,
     onDelete: (() -> Unit)?
 ) {
@@ -256,18 +251,6 @@ private fun VideoCard(
                             .padding(horizontal = 4.dp)
                     )
                 }
-                if (playing) {
-                    Text(
-                        "播放中",
-                        color = Color.White,
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .padding(8.dp)
-                            .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(4.dp))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    )
-                }
                 if (onDelete != null) {
                     Text(
                         "删除",
@@ -301,62 +284,6 @@ private fun VideoCard(
     }
 }
 
-@Composable
-private fun VideoPlayerBar(video: VideoVO, mediaUrl: String, onClose: () -> Unit) {
-    val context = LocalContext.current
-    val player = remember(mediaUrl) {
-        ExoPlayer.Builder(context).build().apply {
-            playWhenReady = true
-            if (mediaUrl.isNotEmpty()) {
-                setMediaItem(MediaItem.fromUri(mediaUrl))
-                prepare()
-            }
-        }
-    }
-    DisposableEffect(mediaUrl) {
-        onDispose { player.release() }
-    }
-    Surface(color = Color.Black, modifier = Modifier.fillMaxWidth()) {
-        Column {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Avatar(url = video.uploaderAvatar, name = video.uploaderName ?: "?", size = 26.dp)
-                Spacer(Modifier.width(8.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        video.title ?: "",
-                        color = Color.White,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        listOfNotNull(
-                            video.uploaderName,
-                            video.duration?.let { "%d:%02d".format(it / 60, it % 60) },
-                            "${video.playCount ?: 0} 次播放",
-                            if (video.width != null && video.height != null) "${video.width}×${video.height}" else null
-                        ).joinToString(" · "),
-                        color = Color.White.copy(alpha = 0.7f),
-                        style = MaterialTheme.typography.labelSmall,
-                        maxLines = 1, overflow = TextOverflow.Ellipsis
-                    )
-                }
-                TextButton(onClick = onClose) { Text("关闭 ✕", color = Color.White) }
-            }
-            Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f)) {
-                AndroidView(
-                    factory = { ctx ->
-                        android.view.SurfaceView(ctx).also { player.setVideoSurfaceView(it) }
-                    },
-                    modifier = Modifier.fillMaxSize(),
-                    update = { view -> player.setVideoSurfaceView(view as android.view.SurfaceView) }
-                )
-            }
-        }
-    }
-}
 
 @Composable
 private fun VideoUploadDialog(
@@ -399,7 +326,7 @@ private fun VideoUploadDialog(
                     Text(if (videoUri != null) "已选视频 ✓" else "选择视频文件 *")
                 }
                 OutlinedButton(onClick = { coverPicker.launch("image/*") }, modifier = Modifier.fillMaxWidth()) {
-                    Text(if (coverUri != null) "已选封面 ✓" else "选择封面（可选）")
+                    Text(if (coverUri != null) "已选封面 ✓" else "选择封面（可选，默认自动抽帧）")
                 }
                 OutlinedTextField(
                     value = title,
@@ -512,8 +439,12 @@ fun LiveRoomScreen(
     }
 
     // 播放器生命周期与界面绑定；playUrl 就位才建 MediaItem（签名地址不能缓存复用）
+    // 鉴权数据源 + HLS 支持：直播/回放是 m3u8，回放地址同样需要 satoken 头
     val player = remember {
-        ExoPlayer.Builder(context).build().apply { playWhenReady = true }
+        val dsFactory = OkHttpDataSource.Factory(vm.authedHttpClient())
+        ExoPlayer.Builder(context)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(context).setDataSourceFactory(dsFactory))
+            .build().apply { playWhenReady = true }
     }
     val playUrl = room?.playUrl
     LaunchedEffect(playUrl) {

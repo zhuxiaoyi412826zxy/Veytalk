@@ -1,5 +1,8 @@
 package com.im.nativeapp.data
 
+import android.content.Context
+import android.content.Intent
+import androidx.core.content.ContextCompat
 import com.im.nativeapp.core.config.SessionStore
 import com.im.nativeapp.core.network.ApiClient
 import com.im.nativeapp.core.network.CaptchaVO
@@ -12,7 +15,9 @@ import com.im.nativeapp.core.network.SmsLoginRequest
 import com.im.nativeapp.core.network.UserInfoVO
 import com.im.nativeapp.core.network.unwrap
 import com.im.nativeapp.core.network.unwrapUnit
+import com.im.nativeapp.core.push.ImPushService
 import com.im.nativeapp.core.ws.ImWebSocket
+import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -22,6 +27,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class AuthRepository @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val apiClient: ApiClient,
     private val session: SessionStore,
     private val ws: ImWebSocket
@@ -87,9 +93,10 @@ class AuthRepository @Inject constructor(
         teardownLocal()
     }
 
-    /** 被顶下线/登出的本地收尾：断长连 + 清凭证 + 清用户资料（不调后端） */
+    /** 被顶下线/登出的本地收尾：断长连 + 停保活服务 + 清凭证 + 清用户资料（不调后端） */
     suspend fun teardownLocal() {
         ws.disconnect()
+        runCatching { context.stopService(Intent(context, ImPushService::class.java)) }
         session.clearToken()
         _currentUser.value = UserInfoVO()
     }
@@ -99,6 +106,8 @@ class AuthRepository @Inject constructor(
         session.setToken(vo.token, vo.tokenName)
         vo.userInfo?.let { _currentUser.value = it }
         ws.connect()
+        // 前台服务保活收消息（局域网无 FCM）：所有登录入口都经过这里
+        runCatching { ContextCompat.startForegroundService(context, Intent(context, ImPushService::class.java)) }
         return vo
     }
 }

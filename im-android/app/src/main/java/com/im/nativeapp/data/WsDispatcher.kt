@@ -3,6 +3,7 @@ package com.im.nativeapp.data
 import android.util.Log
 import com.im.nativeapp.core.network.ApiClient
 import com.im.nativeapp.core.network.MessageVO
+import com.im.nativeapp.core.push.MessageNotifier
 import com.im.nativeapp.core.ws.ImWebSocket
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,7 +32,8 @@ class WsDispatcher @Inject constructor(
     private val friends: FriendRepository,
     private val groups: GroupRepository,
     private val auth: AuthRepository,
-    private val calls: com.im.nativeapp.core.call.CallManager
+    private val calls: com.im.nativeapp.core.call.CallManager,
+    private val notifier: MessageNotifier
 ) {
     companion object { private const val TAG = "WsDispatcher" }
 
@@ -81,7 +83,12 @@ class WsDispatcher @Inject constructor(
                 messages.applyIncoming(dto)
                 // 正打开着这个会话时不计未读（否则角标先 +1 再被 markRead 清零，闪一下）
                 val viewing = conversations.activeId.value != null && conversations.activeId.value == dto.conversationId
-                conversations.applyIncoming(dto, viewing)
+                // @ 了我：与后端 MessageExtra.hasMention 同口径（@全体，或 atUserIds 里有我）
+                val me = auth.currentUser.value.id
+                val mentioned = dto.extra?.atAll == true || dto.extra?.atUserIds?.any { it == me } == true
+                conversations.applyIncoming(dto, viewing, mentioned)
+                // 系统通知：前台/正在看/免打扰未@我时内部静默（对齐 Web 端 utils/notify）
+                notifier.onIncoming(dto, viewing, mentioned)
                 // 送达回执与是否在看无关：消息已经到端了
                 dto.messageId?.let { messages.reportDelivered(listOf(it)) }
                 if (viewing) {

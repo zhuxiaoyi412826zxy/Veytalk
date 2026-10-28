@@ -3,8 +3,8 @@ package com.im.nativeapp.ui.home
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.LiveTv
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -40,6 +40,7 @@ fun MainScreen(
     onOpenAddFriend: () -> Unit,
     onOpenCreateGroup: () -> Unit,
     onOpenLiveRoom: (String) -> Unit,
+    onOpenVideoPlayer: (com.im.nativeapp.core.network.VideoVO) -> Unit = {},
     onOpenAi: () -> Unit = {},
     onOpenProfile: () -> Unit = {},
     onLogout: () -> Unit,
@@ -90,8 +91,8 @@ fun MainScreen(
                     selected = tab == 2,
                     onClick = { tab = 2 },
                     colors = navItemColors,
-                    icon = { Icon(Icons.Default.LiveTv, contentDescription = "直播") },
-                    label = { Text("直播") }
+                    icon = { Icon(Icons.Default.PlayCircle, contentDescription = "视频") },
+                    label = { Text("视频") }
                 )
                 NavigationBarItem(
                     selected = tab == 3,
@@ -112,7 +113,7 @@ fun MainScreen(
                     onOpenAddFriend = onOpenAddFriend,
                     onOpenCreateGroup = onOpenCreateGroup
                 )
-                2 -> LiveTab(onOpenRoom = onOpenLiveRoom)
+                2 -> LiveTab(onOpenRoom = onOpenLiveRoom, onOpenVideoPlayer = onOpenVideoPlayer)
                 3 -> ProfileTab(onLogout = onLogout, onOpenAi = onOpenAi, onOpenProfile = onOpenProfile)
             }
         }

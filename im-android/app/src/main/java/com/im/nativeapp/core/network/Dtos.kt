@@ -239,6 +239,37 @@ data class GroupCreateRequest(
 @Serializable
 data class GroupJoinRequest(val inviteCode: String, val verifyMessage: String? = null)
 
+/** 群成员列表项（事实源：im-group GroupMemberVO.java） */
+@Serializable
+data class GroupMemberVO(
+    @Serializable(IdAsStringNullable::class) val userId: String? = null,
+    val username: String? = null,
+    val nickname: String? = null,
+    /** 展示名：群内昵称 > 账号昵称 > 账号 > 兜底文案（后端已拼好，直接用） */
+    val displayName: String? = null,
+    val avatar: String? = null,
+    val online: Boolean? = null,
+    /** 1 群主 2 管理员 3 成员 */
+    val role: Int? = null,
+    val roleDesc: String? = null,
+    val nicknameInGroup: String? = null,
+    val muted: Boolean? = null
+)
+
+/** 修改群资料：传 null 不改，传空串清空（对齐 group.js updateGroup） */
+@Serializable
+data class GroupUpdateRequest(
+    val name: String? = null,
+    val notice: String? = null,
+    val avatar: String? = null
+)
+
+@Serializable
+data class GroupAddMembersRequest(val userIds: List<String>)
+
+@Serializable
+data class GroupMyNicknameRequest(val nicknameInGroup: String)
+
 // ============================== 文件（file.js + FileVO 事实源） ==============================
 
 @Serializable

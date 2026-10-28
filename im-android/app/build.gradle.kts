@@ -78,6 +78,8 @@ dependencies {
     // 语音播放（录音用系统 MediaRecorder）
     implementation("androidx.media3:media3-exoplayer:1.7.1")
     implementation("androidx.media3:media3-datasource-okhttp:1.7.1")
+    // HLS 模块：直播/回放是 m3u8，缺它 MediaItem 会被当渐进式流解析直接失败
+    implementation("androidx.media3:media3-exoplayer-hls:1.7.1")
 
     // 聊天页图标（加号面板/语音/文件等）
     implementation("androidx.compose.material:material-icons-extended")
