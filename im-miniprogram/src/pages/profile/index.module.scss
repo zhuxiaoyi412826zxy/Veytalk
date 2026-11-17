@@ -1,0 +1,23 @@
+@use '@/styles/variables.scss' as *;
+
+.page { min-height: 100vh; padding: 0 $page-padding $spacing-xl; background: linear-gradient(180deg, #e8eeff, $color-bg-page 440rpx); }
+.hero { margin: 0 -#{$page-padding}; padding: 80rpx $page-padding $spacing-xl; }
+.brand { color: $color-primary; font-size: $font-size-xs; font-weight: $font-weight-bold; letter-spacing: 4rpx; }
+.user { margin-top: $spacing-lg; display: flex; align-items: center; gap: $spacing-md; }
+.copy { flex: 1; min-width: 0; }
+.name { display: block; font-size: $font-size-xxl; font-weight: $font-weight-bold; @include text-ellipsis; }
+.account { display: block; margin-top: $spacing-xs; color: $color-text-secondary; font-size: $font-size-sm; }
+.arrow { color: $color-text-tertiary; font-size: 48rpx; }
+.stats { display: flex; margin-top: -32rpx; padding: $spacing-lg; border-radius: $radius-lg; background: $color-bg-card; box-shadow: $shadow-card; }
+.stat { flex: 1; text-align: center; }
+.number { display: block; font-size: $font-size-xl; font-weight: $font-weight-bold; }
+.label { display: block; margin-top: 4rpx; color: $color-text-tertiary; font-size: $font-size-xs; }
+.card { margin-top: $spacing-md; overflow: hidden; border-radius: $radius-lg; background: $color-bg-card; box-shadow: $shadow-card; }
+.item { display: flex; align-items: center; gap: $spacing-md; min-height: 104rpx; padding: 0 $spacing-lg; &:active { background: $color-bg-hover; } }
+.icon { width: 56rpx; height: 56rpx; border-radius: $radius-md; background: #edf1ff; color: $color-primary; font-size: $font-size-sm; @include flex-center; }
+.itemTitle { flex: 1; font-size: $font-size-md; }
+.value { max-width: 340rpx; color: $color-text-tertiary; font-size: $font-size-xs; @include text-ellipsis; }
+.divider { height: 2rpx; margin-left: 88rpx; background: $color-divider; }
+.limit { margin-top: $spacing-md; padding: $spacing-md; border-radius: $radius-md; background: #fff8e9; color: #8b5b13; font-size: $font-size-xs; line-height: $line-height-loose; }
+.logout { @include button-reset; width: 100%; height: 88rpx; margin-top: $spacing-xl; border: 2rpx solid #ffd5d5; border-radius: $radius-button; background: $color-bg-card; color: $color-error; }
+.version { display: block; margin-top: $spacing-lg; text-align: center; color: $color-text-disabled; font-size: $font-size-xs; }

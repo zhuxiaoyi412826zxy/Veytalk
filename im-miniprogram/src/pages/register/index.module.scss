@@ -1,0 +1,16 @@
+@use '@/styles/variables.scss' as *;
+
+.page { min-height: 100vh; padding: $spacing-lg $page-padding 64rpx; background: linear-gradient(180deg, #edf2ff, $color-bg-page 360rpx); }
+.heading { margin-bottom: $spacing-lg; }
+.title { display: block; font-size: $font-size-xxl; font-weight: $font-weight-bold; }
+.subtitle { display: block; margin-top: $spacing-xs; color: $color-text-tertiary; font-size: $font-size-sm; }
+.card { padding: $spacing-lg; border-radius: $radius-lg; background: $color-bg-card; box-shadow: $shadow-card; }
+.label { display: block; margin: $spacing-md 0 $spacing-sm; color: $color-text-secondary; font-size: $font-size-sm; &:first-child { margin-top: 0; } }
+.required { color: $color-error; }
+.input { width: 100%; height: 88rpx; padding: 0 $spacing-md; border: 2rpx solid $color-border; border-radius: $radius-md; background: #fafbfc; }
+.tip { display: block; margin-top: $spacing-xs; color: $color-text-tertiary; font-size: $font-size-xs; }
+.agreement { margin-top: $spacing-lg; display: flex; align-items: flex-start; gap: $spacing-sm; color: $color-text-secondary; font-size: $font-size-sm; line-height: $line-height-normal; }
+.check { width: 32rpx; height: 32rpx; flex-shrink: 0; margin-top: 4rpx; border: 2rpx solid $color-border; border-radius: 50%; color: transparent; font-size: 22rpx; @include flex-center; }
+.checked { color: $color-text-white; border-color: $color-primary; background: $color-primary; }
+.submit { @include button-reset; width: 100%; height: 96rpx; margin-top: $spacing-lg; border-radius: $radius-button; background: $color-primary; color: $color-text-white; font-size: $font-size-lg; font-weight: $font-weight-semibold; &:active { opacity: .9; } }
+.login { display: block; margin-top: $spacing-lg; text-align: center; color: $color-primary; font-size: $font-size-sm; }

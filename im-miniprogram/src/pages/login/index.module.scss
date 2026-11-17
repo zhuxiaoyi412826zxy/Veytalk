@@ -1,0 +1,34 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  padding: 0 $page-padding 64rpx;
+  background: linear-gradient(180deg, #eaf0ff 0, $color-bg-page 420rpx);
+}
+
+.hero { padding: 120rpx 0 56rpx; }
+.brand { color: $color-primary; font-size: 24rpx; font-weight: $font-weight-bold; letter-spacing: 6rpx; }
+.title { display: block; margin-top: $spacing-sm; font-size: 52rpx; font-weight: $font-weight-bold; }
+.subtitle { display: block; margin-top: $spacing-sm; color: $color-text-secondary; font-size: $font-size-md; }
+
+.card { padding: $spacing-lg; border-radius: $radius-lg; background: $color-bg-card; box-shadow: $shadow-card; }
+.tabs { display: flex; padding: 8rpx; border-radius: $radius-md; background: $color-bg-hover; }
+.tab { flex: 1; height: 64rpx; border-radius: $radius-sm; color: $color-text-secondary; font-size: $font-size-md; @include flex-center; }
+.activeTab { color: $color-primary; background: $color-bg-card; font-weight: $font-weight-semibold; box-shadow: 0 2rpx 8rpx rgba(0,0,0,.05); }
+.form { margin-top: $spacing-lg; }
+.label { display: block; margin: $spacing-md 0 $spacing-sm; color: $color-text-secondary; font-size: $font-size-sm; }
+.input { width: 100%; height: 88rpx; padding: 0 $spacing-md; border: 2rpx solid $color-border; border-radius: $radius-md; background: #fafbfc; }
+.codeRow { display: flex; gap: $spacing-sm; }
+.codeInput { flex: 1; min-width: 0; }
+.codeButton { @include button-reset; width: 200rpx; height: 88rpx; flex-shrink: 0; border: 2rpx solid #dfe5ff; border-radius: $radius-md; background: #f2f5ff; color: $color-primary; font-size: $font-size-sm; &:active { opacity: .8; } }
+.captcha { width: 200rpx; height: 88rpx; flex-shrink: 0; border-radius: $radius-md; background: $color-bg-hover; }
+.submit { @include button-reset; width: 100%; height: 96rpx; margin-top: $spacing-xl; border-radius: $radius-button; background: linear-gradient(135deg, $color-primary, $color-primary-light); color: $color-text-white; font-size: $font-size-lg; font-weight: $font-weight-semibold; &:active { opacity: .9; transform: scale(.99); } }
+.disabled { opacity: .55; }
+.links { display: flex; justify-content: space-between; margin-top: $spacing-lg; color: $color-primary; font-size: $font-size-sm; }
+.server { margin-top: $spacing-xl; padding: $spacing-lg; border-radius: $radius-lg; background: rgba(255,255,255,.7); }
+.serverTitle { display: flex; justify-content: space-between; color: $color-text-secondary; font-size: $font-size-sm; }
+.serverHint { color: $color-text-tertiary; font-size: $font-size-xs; }
+.serverInput { margin-top: $spacing-sm; }
+.serverActions { display: flex; gap: $spacing-sm; margin-top: $spacing-sm; }
+.serverOption { @include button-reset; flex: 1; min-height: 64rpx; padding: 0 $spacing-sm; border: 2rpx solid $color-border; border-radius: $radius-button; background: $color-bg-card; color: $color-text-secondary; font-size: $font-size-xs; &:active { background: $color-bg-hover; } }
+.foot { display: block; margin-top: $spacing-xl; text-align: center; color: $color-text-tertiary; font-size: $font-size-xs; }

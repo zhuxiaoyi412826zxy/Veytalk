@@ -109,6 +109,16 @@ fun ProfileTab(
                     ProfileRow("设置", onClick = onOpenSettings)
                     HorizontalDivider()
                     ProfileRow("关于 IM", onClick = { aboutDialog = true })
+                    HorizontalDivider()
+                    // 开发调试：开启后全局右上角实时显示日志，结束后询问是否导出
+                    ProfileRow("开发调试", onClick = {
+                        if (com.im.nativeapp.core.log.AppLog.running.value) {
+                            android.widget.Toast.makeText(context, "调试日志正在运行，右上角点「结束」可停止", android.widget.Toast.LENGTH_SHORT).show()
+                        } else {
+                            com.im.nativeapp.core.log.AppLog.start()
+                            android.widget.Toast.makeText(context, "已开启，右上角实时显示日志", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    })
                 }
             }
             Spacer(Modifier.height(8.dp))

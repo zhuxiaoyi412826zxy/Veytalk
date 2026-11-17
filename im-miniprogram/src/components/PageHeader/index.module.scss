@@ -1,0 +1,33 @@
+@use '@/styles/variables.scss' as *;
+
+.header {
+  min-height: 116rpx;
+  padding: $spacing-lg $page-padding $spacing-md;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: $color-bg-card;
+}
+
+.copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.title {
+  color: $color-text-primary;
+  font-size: 44rpx;
+  font-weight: $font-weight-bold;
+  letter-spacing: 1rpx;
+}
+
+.subtitle {
+  color: $color-text-tertiary;
+  font-size: $font-size-xs;
+}
+
+.right {
+  flex-shrink: 0;
+  margin-left: $spacing-md;
+}

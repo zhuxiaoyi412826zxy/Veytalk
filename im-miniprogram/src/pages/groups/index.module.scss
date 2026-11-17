@@ -1,0 +1,15 @@
+@use '@/styles/variables.scss' as *;
+
+.page { min-height: 100vh; padding: $spacing-md $page-padding $spacing-xl; }
+.actions { display: flex; gap: $spacing-sm; margin-bottom: $spacing-md; }
+.action { @include button-reset; flex: 1; height: 80rpx; border: 2rpx solid $color-border; border-radius: $radius-button; background: $color-bg-card; color: $color-primary; &:active { opacity: .8; } }
+.primary { border-color: $color-primary; background: $color-primary; color: $color-text-white; }
+.list { overflow: hidden; border-radius: $radius-lg; background: $color-bg-card; box-shadow: $shadow-card; }
+.item { display: flex; align-items: center; gap: $spacing-md; min-height: 128rpx; padding: $spacing-md $spacing-lg; &:active { background: $color-bg-hover; } }
+.copy { flex: 1; min-width: 0; }
+.name { display: block; font-size: 30rpx; font-weight: $font-weight-medium; @include text-ellipsis; }
+.notice { display: block; margin-top: 6rpx; color: $color-text-tertiary; font-size: $font-size-sm; @include text-ellipsis; }
+.meta { text-align: right; color: $color-text-tertiary; font-size: $font-size-xs; }
+.count { display: block; }
+.arrow { display: block; margin-top: 4rpx; font-size: 36rpx; }
+.divider { height: 2rpx; margin-left: 120rpx; background: $color-divider; }

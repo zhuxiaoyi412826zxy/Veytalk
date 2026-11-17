@@ -456,6 +456,12 @@ Vite 会把 `/api` 与 `/ws` 代理到 `http://localhost:8080`，所以**必须�
 `vite.config.js` 里设了 `strictPort: true`——5173 被占用时直接报错退出，
 而不是悄悄换个端口，避免代理配置和浏览器书签对不上。
 
+#### im-miniprogram 小程序（Taro）
+
+`im-miniprogram` 是独立的 Taro 4 + React + TypeScript 客户端，不参与 Maven 构建，直接复用既有 Java 后端。包含消息、好友、视频、AI、我的五个原生 Tab，以及聊天、群组、直播间、扫码授权等二级页面；REST、主 WebSocket、直播弹幕、文件上传和 AI SSE 均在 `src/services/` 封装。
+
+默认服务器为 `https://im.dsaol.asia`，登录页与设置页可切换 `https://120.78.126.132`，均走 HTTPS 默认 443 端口；雪花 ID 在小程序内一律按字符串处理。通过 Trae 的 `TRAE-generate-mini-app` Skill 脚本启动编译与预览，无需外部开发者工具。当前不提供 WebRTC 音视频通话和小程序开播，AI 仅开放文本面试对话。
+
 #### 手机真机访问（USB 共享网络 / 同一热点）
 
 `vite.config.js` 里设了 `server.host: true`，dev server 监听所有网卡而不只是 localhost，
@@ -1442,6 +1448,12 @@ spring-boot-duomokuia/
 │       ├── utils/           格式化、ID 归一化、媒体地址/下载、标题、token、env（环境适配）
 │       ├── views/           页面（含远程控制 Remote、面试 Interview、直播 Live 等；个数随功能增长，不写死）
 │       └── ws/              WebSocket 客户端（连接管理 + 报文分发）
+├── im-miniprogram/          Taro 小程序（五个主 Tab，复用线上 Java 后端）
+│   └── src/
+│       ├── pages/           消息、好友、视频、AI、我的及聊天/群组/直播等二级页面
+│       ├── services/        REST、WebSocket、直播弹幕、文件上传与 AI SSE
+│       ├── store/           Zustand 登录态、会话、消息与未读状态
+│       └── config/runtime.ts 线上域名 / IP 与 API、WS 地址
 ├── im-admin-ui/             管理后台前端（独立工程，只在电脑浏览器用，不参 Maven 构建）
 │   ├── README.md            后台专项说明（为什么独立、端口与 CORS、登录链路、部署四事）
 │   ├── vite.config.js       dev 5273 / preview 4273，代理同 im-ui 打到 8080

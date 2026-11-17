@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.media.AudioManager
 import android.util.Log
+import com.im.nativeapp.core.log.AppLog
 import com.im.nativeapp.core.network.ApiClient
 import com.im.nativeapp.core.network.ApiError
 import com.im.nativeapp.core.network.CallApi
@@ -140,6 +141,7 @@ class CallManager @Inject constructor(
         if (_state.value.status != Status.IDLE) return
         val type = if (mediaType == "video") "video" else "audio"
         val id = UUID.randomUUID().toString()
+        AppLog.i("CALL", "拨号 userId=$userId media=$type callId=$id")
         startedAtTs = 0
         wasConnected = false
         _state.value = CallUiState(
@@ -330,10 +332,14 @@ class CallManager @Inject constructor(
         if (data == null) return
         val action = data["action"]?.jsonPrimitive?.content ?: return
         val s = _state.value
+        if (action != "ice") AppLog.i("CALL", "信令 action=$action callId=${data["callId"]?.jsonPrimitive?.content}")
 
         // invite 是唯一「本机空闲时到达」的信令：置为被叫振铃
         if (action == "invite") {
-            if (s.status != Status.IDLE) return // 本机已在通话中，服务端忙线逻辑已回主叫
+            if (s.status != Status.IDLE) {
+                AppLog.w("CALL", "收到来电但本机非空闲(${s.status})，已忽略")
+                return
+            }
             val fromId = data["fromUserId"]?.jsonPrimitive?.content
             val friend = friends.friends.value.firstOrNull { it.friendId == fromId }
             val name = when {
@@ -342,20 +348,22 @@ class CallManager @Inject constructor(
                 friend.nickname.isNotEmpty() -> friend.nickname
                 else -> "对方"
             }
-            scope.launch {
-                ensureConfig()
-                _state.value = CallUiState(
-                    status = Status.RINGING,
-                    role = "callee",
-                    callId = data["callId"]?.jsonPrimitive?.content ?: "",
-                    mediaType = if (data["mediaType"]?.jsonPrimitive?.content == "video") "video" else "audio",
-                    peerUserId = fromId,
-                    peerName = name,
-                    hint = "邀请你通话",
-                    enabled = _state.value.enabled,
-                    iceServers = _state.value.iceServers
-                )
-            }
+            val callId = data["callId"]?.jsonPrimitive?.content ?: ""
+            val media = if (data["mediaType"]?.jsonPrimitive?.content == "video") "video" else "audio"
+            AppLog.i("CALL", "收到来电 callId=$callId from=$fromId media=$media")
+            // 先振铃再拉 ICE 配置：配置请求慢/失败都不能拖住来电界面
+            _state.value = CallUiState(
+                status = Status.RINGING,
+                role = "callee",
+                callId = callId,
+                mediaType = media,
+                peerUserId = fromId,
+                peerName = name,
+                hint = "邀请你通话",
+                enabled = s.enabled,
+                iceServers = s.iceServers
+            )
+            scope.launch { ensureConfig() }
             return
         }
 
@@ -423,14 +431,12 @@ class CallManager @Inject constructor(
     private fun signal(action: String, extra: JsonObject? = null) {
         val callId = _state.value.callId
         if (callId.isEmpty()) return
-        ws.send(
-            "call",
-            buildJsonObject {
-                put("action", action)
-                put("callId", callId)
-                extra?.forEach { (k, v) -> put(k, v) }
-            }
-        )
+        val data = buildJsonObject {
+            put("action", action)
+            put("callId", callId)
+            extra?.forEach { (k, v) -> put(k, v) }
+        }
+        if (!ws.send("call", data)) AppLog.w("CALL", "上行失败 action=$action（连接不可用）")
     }
 
     /** 本地异常收尾（不发信令） */

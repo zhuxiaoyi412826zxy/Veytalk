@@ -1,0 +1,58 @@
+@use '@/styles/variables.scss' as *;
+
+.page {
+  min-height: 100vh;
+  padding: 0 $page-padding;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 24%, #e7edff 0, #f5f6f7 48%);
+}
+
+.logo {
+  width: 144rpx;
+  height: 144rpx;
+  border-radius: 40rpx;
+  background: linear-gradient(145deg, $color-primary-light, $color-primary-dark);
+  box-shadow: 0 24rpx 56rpx rgba(79, 107, 254, 0.25);
+  color: $color-text-white;
+  font-size: 72rpx;
+  font-weight: $font-weight-bold;
+  @include flex-center;
+}
+
+.name {
+  margin-top: $spacing-lg;
+  font-size: 48rpx;
+  font-weight: $font-weight-bold;
+  letter-spacing: 2rpx;
+}
+
+.slogan {
+  margin-top: $spacing-sm;
+  color: $color-text-tertiary;
+  font-size: $font-size-md;
+}
+
+.loading {
+  margin-top: 80rpx;
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  color: $color-text-tertiary;
+  font-size: $font-size-sm;
+}
+
+.dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  background: $color-primary;
+  animation: breathe 1s ease-in-out infinite alternate;
+}
+
+@keyframes breathe {
+  from { opacity: 0.3; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1.2); }
+}

@@ -77,7 +77,13 @@ class LiveDanmakuSocket {
     }
 
     private fun send(obj: JsonObject): Boolean = try {
-        ws?.send(obj.toString()) ?: false
+        // 补 timestamp：服务端 WsPacket.timestamp 是 long 且开了 FAIL_ON_NULL_FOR_PRIMITIVES，
+        // 缺字段会被判成 null → 整帧 1001 拒绝
+        val frame = buildJsonObject {
+            obj.forEach { (k, v) -> put(k, v) }
+            put("timestamp", System.currentTimeMillis())
+        }
+        ws?.send(frame.toString()) ?: false
     } catch (e: Exception) {
         Log.w(TAG, "danmaku send failed", e)
         false

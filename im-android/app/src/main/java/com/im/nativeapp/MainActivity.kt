@@ -234,6 +234,8 @@ class MainActivity : ComponentActivity() {
 
                 // 通话浮层：盖在一切路由之上，CallManager 状态驱动显隐
                 CallOverlay(callManager)
+                // 调试日志浮层：设置页开启后常驻右上角，结束时可导出
+                com.im.nativeapp.ui.debug.DebugLogOverlay()
                 }
             }
         }

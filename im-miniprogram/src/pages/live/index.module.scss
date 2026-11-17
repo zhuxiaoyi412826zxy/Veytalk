@@ -1,0 +1,21 @@
+@use '@/styles/variables.scss' as *;
+
+.page { min-height: 100vh; padding: $spacing-md $page-padding $spacing-xl; }
+.heading { margin-bottom: $spacing-md; }
+.title { display: block; font-size: $font-size-xxl; font-weight: $font-weight-bold; }
+.subtitle { display: block; margin-top: $spacing-xs; color: $color-text-tertiary; font-size: $font-size-sm; }
+.filters { display: flex; gap: $spacing-sm; margin-bottom: $spacing-md; }
+.filter { height: 56rpx; padding: 0 $spacing-md; border-radius: $radius-button; background: #e8ecf4; color: $color-text-secondary; font-size: $font-size-sm; @include flex-center; }
+.active { background: $color-primary; color: $color-text-white; }
+.grid { display: flex; flex-wrap: wrap; gap: $spacing-md; }
+.card { width: 327rpx; overflow: hidden; border-radius: $radius-lg; background: $color-bg-card; box-shadow: $shadow-card; &:active { opacity: .85; } }
+.coverWrap { position: relative; height: 240rpx; background: linear-gradient(135deg, #283555, #596b97); }
+.cover { width: 100%; height: 100%; }
+.status { position: absolute; left: $spacing-sm; top: $spacing-sm; padding: 6rpx 12rpx; border-radius: $radius-xs; background: rgba(0,0,0,.45); color: $color-text-white; font-size: 20rpx; }
+.liveStatus { background: $color-error; }
+.gate { position: absolute; right: $spacing-sm; top: $spacing-sm; padding: 6rpx 12rpx; border-radius: $radius-xs; background: rgba(0,0,0,.5); color: $color-text-white; font-size: 20rpx; }
+.copy { padding: $spacing-md; }
+.roomTitle { display: block; font-size: $font-size-md; font-weight: $font-weight-medium; @include text-ellipsis-multi(2); }
+.meta { display: flex; align-items: center; gap: $spacing-xs; margin-top: $spacing-sm; color: $color-text-tertiary; font-size: $font-size-xs; }
+.anchor { flex: 1; min-width: 0; @include text-ellipsis; }
+.note { display: block; margin-top: $spacing-xl; text-align: center; color: $color-text-tertiary; font-size: $font-size-xs; }

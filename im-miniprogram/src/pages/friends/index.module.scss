@@ -1,0 +1,21 @@
+@use '@/styles/variables.scss' as *;
+
+.page { min-height: 100vh; background: $color-bg-page; }
+.searchWrap { padding: $spacing-sm $page-padding $spacing-md; background: $color-bg-card; }
+.search { height: 72rpx; padding: 0 $spacing-md; border-radius: $radius-button; background: $color-bg-hover; }
+.shortcuts { display: flex; gap: $spacing-md; margin: $spacing-md $page-padding; }
+.shortcut { position: relative; flex: 1; padding: $spacing-lg; border-radius: $radius-lg; background: $color-bg-card; box-shadow: $shadow-card; &:active { opacity: .8; } }
+.shortcutIcon { width: 56rpx; height: 56rpx; margin-bottom: $spacing-sm; border-radius: $radius-md; background: #edf1ff; color: $color-primary; font-size: $font-size-sm; @include flex-center; }
+.shortcutTitle { display: block; font-size: $font-size-md; font-weight: $font-weight-medium; }
+.shortcutDesc { display: block; margin-top: 4rpx; color: $color-text-tertiary; font-size: $font-size-xs; }
+.badge { position: absolute; right: $spacing-md; top: $spacing-md; min-width: 32rpx; height: 32rpx; padding: 0 8rpx; border-radius: $radius-round; background: $color-error; color: $color-text-white; font-size: 20rpx; @include flex-center; }
+.sectionTitle { display: block; padding: $spacing-md $page-padding $spacing-sm; color: $color-text-tertiary; font-size: $font-size-sm; }
+.list { margin: 0 $page-padding; overflow: hidden; border-radius: $radius-lg; background: $color-bg-card; box-shadow: $shadow-card; }
+.item { display: flex; align-items: center; gap: $spacing-md; min-height: 120rpx; padding: $spacing-md $spacing-lg; &:active { background: $color-bg-hover; } }
+.copy { flex: 1; min-width: 0; }
+.name { display: block; font-size: 30rpx; font-weight: $font-weight-medium; @include text-ellipsis; }
+.signature { display: block; margin-top: 6rpx; color: $color-text-tertiary; font-size: $font-size-sm; @include text-ellipsis; }
+.arrow { color: $color-text-disabled; font-size: 40rpx; }
+.divider { height: 2rpx; margin-left: 120rpx; background: $color-divider; }
+.add { width: 72rpx; height: 72rpx; border: 2rpx solid $color-border; border-radius: 50%; color: $color-primary; font-size: 40rpx; @include flex-center; }
+.note { display: block; padding: $spacing-lg; text-align: center; color: $color-text-disabled; font-size: $font-size-xs; }

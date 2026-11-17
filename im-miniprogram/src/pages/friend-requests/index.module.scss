@@ -1,0 +1,19 @@
+@use '@/styles/variables.scss' as *;
+
+.page { min-height: 100vh; padding: $spacing-md $page-padding $spacing-xl; }
+.tabs { display: flex; padding: 8rpx; border-radius: $radius-md; background: #e9edf5; }
+.tab { flex: 1; height: 64rpx; border-radius: $radius-sm; color: $color-text-secondary; @include flex-center; }
+.active { background: $color-bg-card; color: $color-primary; font-weight: $font-weight-semibold; box-shadow: 0 2rpx 8rpx rgba(0,0,0,.06); }
+.list { margin-top: $spacing-md; }
+.card { margin-bottom: $spacing-md; padding: $spacing-lg; border-radius: $radius-lg; background: $color-bg-card; box-shadow: $shadow-card; }
+.main { display: flex; align-items: center; gap: $spacing-md; }
+.copy { flex: 1; min-width: 0; }
+.name { display: block; font-size: 30rpx; font-weight: $font-weight-medium; @include text-ellipsis; }
+.account { display: block; margin-top: 4rpx; color: $color-text-tertiary; font-size: $font-size-xs; }
+.status { color: $color-text-tertiary; font-size: $font-size-sm; }
+.message { margin-top: $spacing-md; padding: $spacing-md; border-radius: $radius-md; background: $color-bg-page; color: $color-text-secondary; font-size: $font-size-sm; }
+.time { display: block; margin-top: $spacing-sm; color: $color-text-tertiary; font-size: $font-size-xs; }
+.actions { display: flex; justify-content: flex-end; gap: $spacing-sm; margin-top: $spacing-md; }
+.button { @include button-reset; min-width: 144rpx; height: 64rpx; padding: 0 $spacing-md; border: 2rpx solid $color-border; border-radius: $radius-button; background: $color-bg-card; color: $color-text-secondary; font-size: $font-size-sm; &:active { opacity: .75; } }
+.primary { border-color: $color-primary; background: $color-primary; color: $color-text-white; }
+.add { margin-top: $spacing-md; width: 100%; }

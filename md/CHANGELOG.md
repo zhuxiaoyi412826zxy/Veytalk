@@ -18,6 +18,10 @@
 
 ### 新增 Added
 
+- **新增 `im-miniprogram` 视频页三 Tab（视频 / 直播 / 文章）与文章详情页**：直播改为页内列表直达直播间，文章走 `/api/article/page`、`/api/article/{id}` 并做轻量 Markdown 渲染；聊天页补齐语音/视频通话入口（经 WebSocket `call invite` 信令发起，小程序端无法承载实时音视频，接听由 App/桌面端完成）。涉及：`src/pages/videos`、新增 `src/pages/article`、`src/pages/chat`、`src/services/{api,websocket,upload}.ts`、`src/types/im.ts`、`src/utils/ui.ts`。
+
+- **新增 `im-miniprogram`：以 Android 功能为基准落地 Taro 小程序，复用线上 Java 后端并覆盖消息、好友/群、视频/直播、AI SSE、个人资料与扫码授权**。默认使用 `https://im.dsaol.asia`，可切换 `https://120.78.126.132`（HTTPS 443）；WebRTC 通话与小程序开播明确标注未开放。涉及：`im-miniprogram/**`、`README详细开发指南.md`。
+
 - **★ 新增 `.github/workflows/desktop-macos.yml`：GitHub macOS runner 自动构建 Tauri 桌面端成品（用户选定 Tauri + arm64 Apple Silicon；当前走未签名，配齐 APPLE_* 后自动签名公证）**。`macos-14` 上 `npm run tauri -- build --bundles app,dmg` 产出 .dmg/.app，打 tag `v*` 或手动触发；配了 Apple 证书则自动代码签名 + notarytool 公证，tag 触发再把 .dmg 附到 GitHub Release，缺证书则自动降级出【未签名】包（不报错、不中断，本机测试可用，分发需右键打开或 xattr -cr 去隔离），配齐 6 个 APPLE_* 后重跑即自动签名公证、无需改 workflow。★ 需在 Settings→Secrets 配 6 个凭据：`APPLE_CERTIFICATE`(base64 的 .p12)、`APPLE_CERTIFICATE_PASSWORD`、`APPLE_SIGNING_IDENTITY`、`APPLE_ID`、`APPLE_PASSWORD`(app 专用密码)、`APPLE_TEAM_ID`；可选 Variable `IM_SERVER_URL` 覆盖桌面端后端根地址（默认 `https://im.dsaol.asia`，编译期注入 `VITE_IM_SERVER_URL`，不注入则成品 webview 里 API 打到 `tauri://` 自身、连不上后端）。涉及：新增该 workflow、`im-ui/src-tauri/tauri.conf.json`（`bundle.icon` 补 `icons/icon.icns` + 加 `macOS.minimumSystemVersion=11.0`；`targets` 仍留 nsis 给 Windows）。
 
 - **★ 新增 `md/部署/真实服务器部署手册.md`：公网正式部署照抄 runbook（写死 `120.78.126.132` · `dsaol.asia`，十步：域名/安全组 → 建库 → certbot → 收尾 → 验收）**。区别于 `md/综合.txt` 的内网自签测试流程：证书走 **certbot DNS-01** 且 im/admin/www **各签一张独立证书**（nginx 每个 443 块读各自域名路径，一张多 SAN 会让 admin/www 缺文件、整栈 `[emerg]` 起不来）+ 续期 deploy-hook「先 `cp -rL` 再 reload」；CORS 由 `bootstrap.sh` 按 `.env` 域名自动渲染，无需手改；建库后接 `guard-sql-init.sh` + `backup.sh --install-cron`。涉及：新增该手册（汇总现有 `Docker部署指南.md` §〇·B/§8.4/§8.5，未改代码与既有文档）。

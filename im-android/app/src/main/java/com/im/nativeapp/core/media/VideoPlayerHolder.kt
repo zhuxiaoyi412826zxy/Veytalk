@@ -3,9 +3,11 @@ package com.im.nativeapp.core.media
 import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import com.im.nativeapp.core.config.SessionStore
+import com.im.nativeapp.core.log.AppLog
 import com.im.nativeapp.core.network.ApiClient
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -32,9 +34,23 @@ class VideoPlayerHolder @Inject constructor(
     fun prepare(fileUrl: String?, autoPlay: Boolean = true) {
         release()
         val url = session.resolveUrl(fileUrl) ?: ""
-        if (url.isEmpty()) return
+        if (url.isEmpty()) {
+            AppLog.w("PLAYER", "prepare 跳过：url 为空")
+            return
+        }
+        AppLog.i("PLAYER", "prepare autoPlay=$autoPlay url=$url")
         val dsFactory = OkHttpDataSource.Factory(apiClient.mediaHttpClient)
+        // 缓冲区调大一些：弱网/自签证书握手抖动时不容易一卡一顿
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                15_000, // 最小缓冲
+                60_000, // 最大缓冲
+                1_000,  // 起播所需
+                2_000   // 重缓冲所需
+            )
+            .build()
         player = ExoPlayer.Builder(context)
+            .setLoadControl(loadControl)
             .setMediaSourceFactory(DefaultMediaSourceFactory(context).setDataSourceFactory(dsFactory))
             .build().apply {
                 playWhenReady = autoPlay
@@ -44,7 +60,10 @@ class VideoPlayerHolder @Inject constructor(
     }
 
     fun release() {
-        player?.release()
+        player?.let {
+            AppLog.i("PLAYER", "release")
+            it.release()
+        }
         player = null
     }
 }

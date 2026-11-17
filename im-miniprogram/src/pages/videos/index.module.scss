@@ -1,0 +1,42 @@
+@use '@/styles/variables.scss' as *;
+
+.page { min-height: 100vh; background: $color-bg-page; }
+.tabs { display: flex; margin: 0 $page-padding $spacing-md; padding: 8rpx; border-radius: $radius-md; background: #e7ebf3; }
+.tab { flex: 1; height: 64rpx; border-radius: $radius-sm; color: $color-text-secondary; @include flex-center; }
+.active { background: $color-bg-card; color: $color-primary; font-weight: $font-weight-semibold; }
+.grid { display: flex; flex-wrap: wrap; gap: $spacing-md; padding: 0 $page-padding $spacing-xl; }
+.card { width: 327rpx; overflow: hidden; border-radius: $radius-lg; background: $color-bg-card; box-shadow: $shadow-card; &:active { opacity: .85; } }
+.coverWrap { position: relative; width: 100%; height: 400rpx; background: #1c2333; }
+.cover { width: 100%; height: 100%; }
+.play { position: absolute; left: 50%; top: 50%; width: 72rpx; height: 72rpx; margin: -36rpx; border: 2rpx solid rgba(255,255,255,.6); border-radius: 50%; background: rgba(0,0,0,.35); color: $color-text-white; font-size: 32rpx; @include flex-center; }
+.duration { position: absolute; right: $spacing-sm; bottom: $spacing-sm; padding: 4rpx 10rpx; border-radius: $radius-xs; background: rgba(0,0,0,.55); color: $color-text-white; font-size: 20rpx; }
+.copy { padding: $spacing-md; }
+.title { display: block; min-height: 72rpx; font-size: $font-size-md; font-weight: $font-weight-medium; line-height: 1.4; @include text-ellipsis-multi(2); }
+.meta { display: flex; align-items: center; gap: $spacing-xs; margin-top: $spacing-sm; color: $color-text-tertiary; font-size: $font-size-xs; }
+.author { flex: 1; min-width: 0; @include text-ellipsis; }
+.add { height: 72rpx; padding: 0 $spacing-md; border-radius: $radius-button; background: $color-primary; color: $color-text-white; font-size: $font-size-sm; @include flex-center; }
+.publish { margin: 0 $page-padding $spacing-md; padding: $spacing-lg; border-radius: $radius-lg; background: $color-bg-card; box-shadow: $shadow-card; }
+.publishTitle { display: block; margin-bottom: $spacing-md; font-size: $font-size-lg; font-weight: $font-weight-semibold; }
+.input { height: 80rpx; padding: 0 $spacing-md; border: 2rpx solid $color-border; border-radius: $radius-md; }
+.publishActions { display: flex; gap: $spacing-sm; margin-top: $spacing-md; }
+.button { @include button-reset; flex: 1; height: 72rpx; border: 2rpx solid $color-border; border-radius: $radius-button; background: $color-bg-card; color: $color-text-secondary; font-size: $font-size-sm; }
+.primary { border-color: $color-primary; background: $color-primary; color: $color-text-white; }
+.fileName { display: block; margin-top: $spacing-sm; color: $color-text-tertiary; font-size: $font-size-xs; @include text-ellipsis; }
+.playerMask { position: fixed; z-index: 100; inset: 0; padding: 96rpx $page-padding; background: rgba(8,12,22,.96); }
+.player { width: 100%; height: 68vh; border-radius: $radius-md; background: #000; }
+.playerLoading { display: flex; align-items: center; justify-content: center; color: #b8c0d0; font-size: $font-size-md; }
+.playerInfo { margin-top: $spacing-md; color: $color-text-white; }
+.playerTitle { display: block; font-size: $font-size-lg; font-weight: $font-weight-semibold; }
+.playerMeta { display: block; margin-top: $spacing-xs; color: #b8c0d0; font-size: $font-size-sm; }
+.playerActions { display: flex; gap: $spacing-sm; margin-top: $spacing-md; }
+.playerButton { @include button-reset; flex: 1; height: 72rpx; border: 2rpx solid #59647a; border-radius: $radius-button; background: transparent; color: $color-text-white; }
+.danger { border-color: #b84c55; color: #ff9ca5; }
+.loadMore { padding: 0 $page-padding $spacing-xl; }
+.empty { padding-top: 80rpx; }
+.gate { position: absolute; left: $spacing-sm; top: $spacing-sm; padding: 4rpx 10rpx; border-radius: $radius-xs; background: rgba(0,0,0,.55); color: #ffd166; font-size: 20rpx; }
+.articleList { display: flex; flex-direction: column; gap: $spacing-md; padding: 0 $page-padding $spacing-xl; }
+.articleCard { display: flex; gap: $spacing-md; padding: $spacing-md; border-radius: $radius-lg; background: $color-bg-card; box-shadow: $shadow-card; &:active { opacity: .85; } }
+.articleCopy { flex: 1; min-width: 0; }
+.articleTitle { display: block; font-size: $font-size-md; font-weight: $font-weight-medium; line-height: 1.4; @include text-ellipsis-multi(2); }
+.articleSummary { display: block; margin-top: $spacing-xs; color: $color-text-secondary; font-size: $font-size-xs; @include text-ellipsis-multi(2); }
+.articleCover { width: 200rpx; height: 140rpx; flex-shrink: 0; border-radius: $radius-sm; }

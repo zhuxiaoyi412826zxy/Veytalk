@@ -1,0 +1,17 @@
+@use '@/styles/variables.scss' as *;
+
+.page { min-height: 100vh; padding: $spacing-xl $page-padding; background: linear-gradient(180deg, #eaf0ff, $color-bg-page 400rpx); }
+.hero { text-align: center; }
+.scanMark { width: 160rpx; height: 160rpx; margin: 0 auto $spacing-lg; border: 6rpx solid $color-primary; border-radius: $spacing-lg; color: $color-primary; font-size: 64rpx; @include flex-center; }
+.title { display: block; font-size: $font-size-xxl; font-weight: $font-weight-bold; }
+.desc { display: block; margin: $spacing-md auto 0; max-width: 580rpx; color: $color-text-secondary; font-size: $font-size-md; line-height: $line-height-loose; }
+.card { margin-top: $spacing-xl; padding: $spacing-xl $spacing-lg; border-radius: $radius-lg; background: $color-bg-card; box-shadow: $shadow-card; text-align: center; }
+.account { display: flex; align-items: center; justify-content: center; gap: $spacing-md; margin: $spacing-lg 0; }
+.name { font-size: $font-size-lg; font-weight: $font-weight-semibold; }
+.warning { padding: $spacing-md; border-radius: $radius-md; background: #fff7e8; color: #8c5b14; font-size: $font-size-sm; line-height: $line-height-loose; }
+.actions { display: flex; gap: $spacing-sm; margin-top: $spacing-lg; }
+.button { @include button-reset; flex: 1; height: 88rpx; border: 2rpx solid $color-border; border-radius: $radius-button; background: $color-bg-card; color: $color-text-secondary; }
+.primary { border-color: $color-primary; background: $color-primary; color: $color-text-white; }
+.scanButton { @include button-reset; width: 100%; height: 96rpx; margin-top: $spacing-xl; border-radius: $radius-button; background: $color-primary; color: $color-text-white; font-size: $font-size-lg; font-weight: $font-weight-semibold; }
+.tip { display: block; margin-top: $spacing-lg; text-align: center; color: $color-text-tertiary; font-size: $font-size-xs; line-height: $line-height-loose; }
+.success { color: $color-success; font-size: $font-size-xl; font-weight: $font-weight-semibold; }

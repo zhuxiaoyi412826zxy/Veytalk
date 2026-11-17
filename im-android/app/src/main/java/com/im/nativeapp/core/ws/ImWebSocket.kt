@@ -2,6 +2,7 @@ package com.im.nativeapp.core.ws
 
 import android.util.Log
 import com.im.nativeapp.core.config.SessionStore
+import com.im.nativeapp.core.log.AppLog
 import com.im.nativeapp.core.network.ApiClient
 import com.im.nativeapp.core.network.ApiError
 import com.im.nativeapp.core.network.TlsCompat
@@ -147,6 +148,7 @@ class ImWebSocket @Inject constructor(
             heartbeatSeconds = DEFAULT_HEARTBEAT_SECONDS
             _status.value = Status.OPEN
             startHeartbeat()
+            AppLog.i("WS", "已连接")
             Log.d(TAG, "ws open")
         }
 
@@ -157,6 +159,11 @@ class ImWebSocket @Inject constructor(
                 return // 非 JSON 帧（代理探活等）直接忽略，对齐 Web 端处理
             }
             val type = packet["type"]?.jsonPrimitive?.content ?: return
+            if (type != "pong") {
+                // error 帧必须带原文：服务端拒绝上行时的 code/message 全在里面
+                if (type == "error") AppLog.w("WS", "↓ error ${text.take(300)}")
+                else AppLog.i("WS", "↓ $type")
+            }
             when (type) {
                 "pong" -> {
                     pongTimeoutJob?.cancel()
@@ -184,11 +191,13 @@ class ImWebSocket @Inject constructor(
         }
 
         override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+            AppLog.w("WS", "已断开 code=$code reason=$reason")
             Log.d(TAG, "ws closed code=$code reason=$reason manual=$manualClose")
             onSocketDown()
         }
 
         override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+            AppLog.w("WS", "连接失败 ${t.message}")
             Log.w(TAG, "ws failure: ${t.message}")
             onSocketDown()
         }
@@ -212,7 +221,9 @@ class ImWebSocket @Inject constructor(
                 delay(heartbeatSeconds * 1000)
                 val socket = ws ?: break
                 if (_status.value != Status.OPEN) break
-                send(socket, """{"type":"ping"}""")
+                // 必须带 timestamp：服务端开了 FAIL_ON_NULL_FOR_PRIMITIVES，
+                // WsPacket.timestamp 是 long，缺字段会被判成 null 直接拒帧（1001 报文格式错误）
+                send(socket, """{"type":"ping","timestamp":${System.currentTimeMillis()}}""")
                 // 两个心跳周期内没等到 pong 就判定链路已死
                 pongTimeoutJob?.cancel()
                 pongTimeoutJob = scope.launch {
@@ -232,8 +243,13 @@ class ImWebSocket @Inject constructor(
         // 后端整条解析失败、只回 error，导致带 data 的上行（call/read/delivered）全部静默丢失
         val packet = buildJsonObject {
             put("type", type)
+            put("timestamp", System.currentTimeMillis())
             if (clientMsgId != null) put("clientMsgId", clientMsgId)
             if (data != null) put("data", data)
+        }
+        // ICE 候选项量太大，不进调试缓冲，其余上行都记一条，便于和服务端 error 帧对齐
+        if (data?.get("action")?.jsonPrimitive?.content != "ice") {
+            AppLog.i("WS", "↑ ${packet.toString().take(300)}")
         }
         return send(socket, packet.toString())
     }

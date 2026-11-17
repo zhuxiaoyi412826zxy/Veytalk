@@ -42,6 +42,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -104,6 +105,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonElement
+import okhttp3.Request
+import org.json.JSONObject
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -129,6 +132,63 @@ class SettingsViewModel @Inject constructor(
 
     /** 导出聊天记录要选会话：直接复用会话仓库的列表 */
     val conversationList: StateFlow<List<ConversationVO>> = conversations.list
+
+    /** 版本信息 + 更新检查结果 */
+    data class VersionState(
+        val localName: String = "0.0.0",
+        val localCode: Int = 0,
+        val checking: Boolean = false,
+        val latestName: String = "",
+        val latestCode: Int = 0,
+        val notes: String = "",
+        val downloadUrl: String = "",
+        val message: String = ""
+    )
+
+    private val _version = MutableStateFlow(readLocalVersion())
+    val version: StateFlow<VersionState> = _version
+
+    private fun readLocalVersion(): VersionState = runCatching {
+        val info = context.packageManager.getPackageInfo(context.packageName, 0)
+        @Suppress("DEPRECATION")
+        val code = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) info.longVersionCode.toInt() else info.versionCode
+        VersionState(localName = info.versionName ?: "0.0.0", localCode = code)
+    }.getOrDefault(VersionState())
+
+    /**
+     * 检查更新：读取服务器上的静态清单 {当前服务器}/app-version.json，
+     * 用 versionCode 比大小（versionName 仅供展示），字段见 版本记录.md。
+     */
+    fun checkUpdate() {
+        val cur = _version.value
+        if (cur.checking) return
+        _version.value = cur.copy(checking = true, message = "")
+        viewModelScope.launch {
+            val result = runCatching {
+                val url = session.currentServer().trimEnd('/') + "/app-version.json"
+                val req = Request.Builder().url(url).header("Cache-Control", "no-cache").build()
+                apiClient.mediaHttpClient.newCall(req).execute().use { resp ->
+                    if (!resp.isSuccessful) error("HTTP ${resp.code}")
+                    JSONObject(resp.body?.string().orEmpty())
+                }
+            }
+            val latest = result.getOrNull()
+            _version.value = if (latest == null) {
+                val err = result.exceptionOrNull()
+                cur.copy(checking = false, message = "检查失败：" + (err?.message ?: "网络异常"))
+            } else {
+                val code = latest.optInt("versionCode", 0)
+                cur.copy(
+                    checking = false,
+                    latestCode = code,
+                    latestName = latest.optString("versionName"),
+                    notes = latest.optString("notes"),
+                    downloadUrl = latest.optString("url"),
+                    message = if (code > cur.localCode) "发现新版本" else "已是最新版本"
+                )
+            }
+        }
+    }
 
     fun server(): String = session.currentServer()
     val username: String get() = auth.currentUser.value.username
@@ -1087,10 +1147,61 @@ private fun AdvancedPage(vm: SettingsViewModel) {
     var debug by remember { mutableStateOf(UiPrefs.debugLog) }
     var serverDialog by remember { mutableStateOf(false) }
     var exportDialog by remember { mutableStateOf(false) }
+    var updateDialog by remember { mutableStateOf(false) }
+    val ver by vm.version.collectAsStateWithLifecycle()
+    val ctx = LocalContext.current
+
+    // 后端清单里的 versionCode 比本地大 → 弹一次更新说明
+    LaunchedEffect(ver.message, ver.latestCode) {
+        if (ver.message == "发现新版本") updateDialog = true
+    }
+
+    if (updateDialog) {
+        AlertDialog(
+            onDismissRequest = { updateDialog = false },
+            title = { Text("发现新版本 ${ver.latestName}") },
+            text = {
+                Text(
+                    ver.notes.ifBlank {
+                        "当前 ${ver.localName} (${ver.localCode}) → ${ver.latestName} (${ver.latestCode})"
+                    },
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    updateDialog = false
+                    if (ver.downloadUrl.isNotBlank()) {
+                        runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(ver.downloadUrl))) }
+                    }
+                }) { Text(if (ver.downloadUrl.isNotBlank()) "去下载" else "知道了") }
+            },
+            dismissButton = if (ver.downloadUrl.isNotBlank()) {
+                { TextButton(onClick = { updateDialog = false }) { Text("关闭") } }
+            } else null
+        )
+    }
 
     Column {
         Row2("后端服务器", vm.server()) {
             TextButton(onClick = { serverDialog = true }) { Text("修改") }
+        }
+        HorizontalDivider()
+        Row2(
+            "版本号",
+            buildString {
+                append("当前 ${ver.localName}")
+                if (ver.message.isNotBlank()) append(" · ${ver.message}")
+                if (ver.message == "发现新版本" && ver.latestName.isNotBlank()) append(" ${ver.latestName}")
+            }
+        ) {
+            TextButton(onClick = { vm.checkUpdate() }, enabled = !ver.checking) {
+                if (ver.checking) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                } else {
+                    Text("检查更新")
+                }
+            }
         }
         HorizontalDivider()
         Row2("调试日志", "输出网络与信令日志到 Logcat") {

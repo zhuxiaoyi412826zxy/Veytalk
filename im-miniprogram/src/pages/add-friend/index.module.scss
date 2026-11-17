@@ -1,0 +1,14 @@
+@use '@/styles/variables.scss' as *;
+
+.page { min-height: 100vh; padding: $spacing-lg $page-padding; background: linear-gradient(180deg, #edf2ff, $color-bg-page 360rpx); }
+.title { display: block; font-size: $font-size-xxl; font-weight: $font-weight-bold; }
+.desc { display: block; margin: $spacing-sm 0 $spacing-lg; color: $color-text-tertiary; font-size: $font-size-sm; line-height: $line-height-loose; }
+.tabs { display: flex; margin-bottom: $spacing-md; padding: 8rpx; border-radius: $radius-md; background: #e4e9f3; }
+.tab { flex: 1; height: 64rpx; border-radius: $radius-sm; color: $color-text-secondary; @include flex-center; }
+.active { background: $color-bg-card; color: $color-primary; font-weight: $font-weight-semibold; }
+.card { padding: $spacing-lg; border-radius: $radius-lg; background: $color-bg-card; box-shadow: $shadow-card; }
+.label { display: block; margin: $spacing-md 0 $spacing-sm; color: $color-text-secondary; font-size: $font-size-sm; &:first-child { margin-top: 0; } }
+.input { width: 100%; height: 88rpx; padding: 0 $spacing-md; border: 2rpx solid $color-border; border-radius: $radius-md; background: #fafbfc; }
+.textarea { width: 100%; height: 160rpx; padding: $spacing-md; border: 2rpx solid $color-border; border-radius: $radius-md; background: #fafbfc; }
+.submit { @include button-reset; width: 100%; height: 88rpx; margin-top: $spacing-lg; border-radius: $radius-button; background: $color-primary; color: $color-text-white; font-weight: $font-weight-semibold; &:active { opacity: .9; } }
+.tip { margin-top: $spacing-lg; padding: $spacing-md; border-radius: $radius-md; background: #edf1ff; color: $color-text-secondary; font-size: $font-size-xs; line-height: $line-height-loose; }
