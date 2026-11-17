@@ -661,6 +661,17 @@ async function setupAgentAutostart() {
   const workDir = path.join(os.homedir(), 'im-remote-agent')
   try {
     fs.mkdirSync(workDir, { recursive: true })
+    // 种子 server.url：Agent 内置默认 http://127.0.0.1:8080，装在无本机后端的被控机上
+    // 必然 ConnectException 重试循环（免登录自启场景的头号启动报错）。这里把桌面端
+    // 三层回落的解析结果（server-config.js，与前端同源）写进 Agent 的 config.properties；
+    // 用户已手动配过（含 Agent 窗口「服务器地址」栏改动）则原样尊重，不覆盖。
+    const cfgFile = path.join(workDir, 'config.properties')
+    try {
+      const existing = fs.existsSync(cfgFile) ? fs.readFileSync(cfgFile, 'utf8') : ''
+      if (!/^\s*server\.url\s*=\s*\S+/m.test(existing)) {
+        fs.appendFileSync(cfgFile, `server.url=${resolveServerBase().baseUrl}\n`, 'utf8')
+      }
+    } catch { /* 种子失败降级为 Agent 默认地址：只影响被控能力，不阻塞主进程 */ }
     // 清掉宿主机的 JAVA_TOOL_OPTIONS 再传给内置 JRE：例如 trustStoreType=WINDOWS-ROOT
     // 依赖 jdk.crypto.mscapi 模块，环境残留会让 Agent 起身即死
     const env = { ...process.env }
@@ -733,10 +744,11 @@ app.whenReady().then(async () => {
   setupAppLog()
   setupDesktopConfig()
   setupNotify()
-  setupAgentAutostart()
   // 建窗口前先探域名：被备案拦截的网络会切到内置 IP 回落，preload 第一次 resolve 拿到的就是可达地址；
   // 正常网络代价是一次 TLS 握手（几百毫秒），被拦网络 reset 包约百毫秒回来，不拖启动
   await resolveWithProbe()
+  // Agent 自启放在探测之后：种子进 config.properties 的 server.url 要含 IP 回落态（见 setupAgentAutostart）
+  setupAgentAutostart()
   createWindow()
   // 托盘在建窗口之后：close 钩子已经挂上，这时 tray 不是 null，「关窗口」才会落到收进托盘那一路
   setupTray()
